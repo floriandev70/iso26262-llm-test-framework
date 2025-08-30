@@ -27,7 +27,7 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Run tests (binary only, filter in main.cpp)
-        run: ./build/unit_tests
+        run: find build -type f -name unit_tests -exec {} \;
 
       - name: Debug build folder
         run: ls -R build
