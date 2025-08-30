@@ -31,7 +31,7 @@ jobs:
         # Hinweis: Hier lassen wir bewusst scheitern, damit du rote/grüne Tests siehst
 
   coverage:
-    name: Coverage (Linux only)
+    name: Coverage (Linux)
     runs-on: ubuntu-latest
 
     steps:
@@ -65,3 +65,48 @@ jobs:
         with:
           name: coverage-report
           path: build/coverage.html
+
+  coverage-macos:
+    name: Coverage (macOS)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure with LLVM coverage flags
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fprofile-instr-generate -fcoverage-mapping" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fprofile-instr-generate -fcoverage-mapping"
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Run tests (continue even if some fail)
+        run: ctest --test-dir build --output-on-failure || true
+        continue-on-error: true
+
+      - name: Generate llvm-cov HTML report
+        if: always()
+        shell: bash
+        run: |
+          BIN=$(find build -type f -name "unit_tests" -perm +111 2>/dev/null | head -n1)
+          if [ -z "$BIN" ]; then BIN=$(find build -type f -name "*tests*" -perm +111 2>/dev/null | head -n1); fi
+          PROFS=$(find build -name "*.profraw" | tr '\n' ' ')
+          if [ -z "$BIN" ] || [ -z "$PROFS" ]; then echo "No coverage data found"; exit 0; fi
+          xcrun llvm-profdata merge -sparse $PROFS -o build/coverage.profdata
+          mkdir -p build/coverage_html
+          xcrun llvm-cov show "$BIN" -instr-profile=build/coverage.profdata \
+            -format=html -output-dir build/coverage_html \
+            -ignore-filename-regex="(_deps/|tests?/)"
+          xcrun llvm-cov report "$BIN" -instr-profile=build/coverage.profdata > build/coverage_summary.txt
+
+      - name: Upload Coverage (HTML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-macos-html
+          path: build/coverage_html
+          if-no-files-found: ignore
+         
