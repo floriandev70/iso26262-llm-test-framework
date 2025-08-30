@@ -27,7 +27,7 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Run tests (binary only, filter in main.cpp)
-        run: ./build/gTest_test
+        run: find build -type f -name gTest_test -exec {} \;
 
 
   coverage:
