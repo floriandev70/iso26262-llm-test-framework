@@ -27,17 +27,7 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Run tests (binary only, filter in main.cpp)
-        run: |
-          if [ -f ./build/gTest_test ]; then
-            ./build/gTest_test
-          elif [ -f ./build/Release/gTest_test.exe ]; then
-            ./build/Release/gTest_test.exe
-          elif [ -f ./build/Release/gTest_test ]; then
-            ./build/Release/gTest_test
-          else
-            echo "Test binary not found!"
-            exit 1
-          fi
+        run: ./build/unit_tests
 
   coverage:
     name: Coverage (Ubuntu only)
@@ -61,7 +51,7 @@ jobs:
         run: cmake --build build
 
       - name: Run tests (binary only, filter in main.cpp)
-        run: ./build/gTest_test || true
+        run: ./build/unit_tests || true
         continue-on-error: true
 
       - name: Generate HTML coverage report
