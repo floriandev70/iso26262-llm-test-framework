@@ -9,7 +9,7 @@ jobs:
     name: Build & Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false             # <-- NEU: nicht abbrechen, wenn ein OS scheitert
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
@@ -26,12 +26,12 @@ jobs:
       - name: Build project
         run: cmake --build build --config Release
 
-      - name: Run tests
-        run: ctest --test-dir build -C Release --output-on-failure
-        # Hinweis: Hier lassen wir bewusst scheitern, damit du rote/grüne Tests siehst
+      - name: Run tests (binary only, filter in main.cpp)
+        run: ./build/gTest_test
+
 
   coverage:
-    name: Coverage (Linux only)
+    name: Coverage (Ubuntu only)
     runs-on: ubuntu-latest
 
     steps:
@@ -51,12 +51,12 @@ jobs:
       - name: Build project
         run: cmake --build build
 
-      - name: Run tests (continue even if some fail)
-        run: ctest --test-dir build --output-on-failure || true   # <-- weiter auch bei Fails
-        continue-on-error: true                                    # <-- doppelt abgesichert
+      - name: Run tests (binary only, filter in main.cpp)
+        run: ./build/gTest_test || true
+        continue-on-error: true
 
       - name: Generate HTML coverage report
-        if: always()                                               # <-- immer versuchen
+        if: always()
         run: gcovr -r . --html --html-details -o build/coverage.html
 
       - name: Upload HTML coverage artifact
