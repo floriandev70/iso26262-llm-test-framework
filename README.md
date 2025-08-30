@@ -14,11 +14,10 @@ The framework integrates:
 ---
 
 ## 📁 Repository Structure
-
-\`\`\`
+```text
 .
-├── main/                        # Entry point (main.cpp)
-├── Lab/                         # Original project layout (sources + tests)
+├── main/                            # Entry point (main.cpp)
+├── Lab/                             # Original project layout (sources + tests)
 ├── prompts/
 │   ├── common_ASIL_assistant_test_instructions.md
 │   ├── ASIL_a_assistant_test_instructions.md
@@ -29,14 +28,13 @@ The framework integrates:
 │       ├── hints_for_testing.md
 │       ├── mcc.md
 │       └── mcdc.md
-├── paper/                       # JOSS paper (paper.md + references)
-├── scripts/                     # Helper scripts (optional)
-├── CMakeLists.txt               # Build configuration
-├── .github/workflows/ci.yml     # GitHub Actions workflow (CI)
+├── paper/                           # JOSS paper (paper.md + references)
+├── scripts/                         # Helper scripts (optional)
+├── CMakeLists.txt                   # Build configuration
+├── .github/workflows/ci.yml         # GitHub Actions workflow (CI)
 ├── LICENSE
 └── README.md
-\`\`\`
-
+```
 ---
 
 ## 🛠️ Build & Run
