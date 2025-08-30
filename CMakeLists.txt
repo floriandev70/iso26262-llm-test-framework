@@ -1,32 +1,29 @@
-cmake_minimum_required(VERSION 3.28)
-project(gTest_test)
+cmake_minimum_required(VERSION 3.20)
+project(gTest_test LANGUAGES CXX)
 
-find_package(Threads REQUIRED)
-find_package(GTest REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Optional: Code Coverage Flags (enable manually if needed)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  message(STATUS "Debug mode enabled - enabling coverage flags")
+  add_compile_options(--coverage)
+  add_link_options(--coverage)
+endif()
 
-add_executable(gTest_test main/main.cpp
-        Lab/boolean_algebra.cpp
-        Lab/Tests/boolean_algebra_tests.cpp
-        Lab/includes/boolean_algebra.h
-        Lab/tests/math_lib_tests.cpp
-        Lab/math_lib.cpp
-        Lab/includes/math_lib.h
-        Lab/includes/real_world.h
-        Lab/real_world.cpp
-        Lab/tests/real_world_tests.cpp
-        Lab/tests/dimi.cpp
-        Lab/tests/dimi.cpp
-        Lab/tests/dimis_supadupa.cpp)
+# Enable testing infrastructure
+enable_testing()
 
-target_include_directories(gTest_test
-        PRIVATE
-        ${GTEST_INCLUDE_DIRS})
+# GoogleTest via FetchContent
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/release-1.12.1.zip
+)
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
-target_link_libraries(gTest_test
-        PRIVATE
-        GTest::GTest
-        Threads::Threads)
-
-target_compile_options(gTest_test PRIVATE -Wall -Werror)
+# Include your source files
+add_subdirectory(Lab)
+add_subdirectory(main)
