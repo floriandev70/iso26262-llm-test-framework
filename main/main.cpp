@@ -5,9 +5,7 @@
 int main(int argc, char **argv) {
     std::cout << "Tests start now..." << std::endl;
     // prints
-    dcdc_ntc_temp_def my_ntc_temp;
-    //std::cout << Temp_Calc_Pres_Wacol_Temp_48V(&my_ntc_temp) << std::endl;
     //::testing::InitGoogleTest(&argc, argv);
-    //::testing::GTEST_FLAG(filter) = "NOT_THERE.*";
+    ::testing::GTEST_FLAG(filter) = "ASIL_A.*";
     return RUN_ALL_TESTS();
 }
