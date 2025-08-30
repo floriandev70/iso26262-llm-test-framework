@@ -2,72 +2,75 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
 
 jobs:
   build-and-test:
     name: Build & Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install dependencies (Linux/macOS)
-      if: matrix.os != 'windows-latest'
-      run: sudo apt-get update && sudo apt-get install -y lcov gcovr
+      - name: Install CMake
+        uses: jwlawson/actions-setup-cmake@v1.14
 
-    - name: Set up CMake
-      uses: jwlawson/actions-setup-cmake@v1.14
+      - name: Configure project
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
-    - name: Configure project
-      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build project
+        run: cmake --build build --config Release
 
-    - name: Build project
-      run: cmake --build build --config Release
-
-    - name: Run tests
-      run: ctest --test-dir build --output-on-failure
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
 
   coverage:
-    name: Coverage (Linux only)
-    runs-on: ubuntu-latest
-    needs: build-and-test
+    name: Coverage (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install gcovr
-      run: sudo apt-get update && sudo apt-get install -y gcovr
+      - name: Configure with coverage flags
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fprofile-instr-generate -fcoverage-mapping" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fprofile-instr-generate -fcoverage-mapping"
 
-    - name: Configure with coverage flags
-      run: |
-        cmake -S . -B build \
-              -DCMAKE_BUILD_TYPE=Debug \
-              -DCMAKE_CXX_FLAGS="--coverage" \
-              -DCMAKE_C_FLAGS="--coverage"
+      - name: Build with coverage
+        run: cmake --build build
 
-    - name: Build with coverage
-      run: cmake --build build
+      - name: Run tests (continue even if some fail)
+        run: ctest --test-dir build --output-on-failure || true
+        continue-on-error: true
 
-    - name: Run tests (continue even if some fail)
-      run: ctest --test-dir build || true
+      - name: Generate coverage report
+        if: always()
+        run: |
+          BIN=$(find build -type f -name "unit_tests" -perm -111 | head -n1)
+          if [ -z "$BIN" ]; then BIN=$(find build -type f -name "*tests*" -perm -111 | head -n1); fi
+          PROFS=$(find build -name "*.profraw" | tr '\n' ' ')
+          if [ -z "$BIN" ] || [ -z "$PROFS" ]; then echo "No coverage data found"; exit 0; fi
+          llvm-profdata merge -sparse $PROFS -o build/coverage.profdata
+          mkdir -p build/coverage_html
+          llvm-cov show "$BIN" \
+            -instr-profile=build/coverage.profdata \
+            -format=html -output-dir build/coverage_html \
+            --ignore-filename-regex="(main.cpp|.*CMakeFiles.*|.*tests?/.*)"
 
-    - name: Generate HTML coverage report
-      run: |
-        mkdir -p build/coverage
-        gcovr -r . --html --html-details \
-              --output build/coverage/coverage.html \
-              -e main/ \
-              -f Lab/ \
-              -f Lab/tests/
-
-    - name: Upload HTML coverage artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report
-        path: build/coverage/coverage.html
+      - name: Upload HTML coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}
+          path: build/coverage_html
