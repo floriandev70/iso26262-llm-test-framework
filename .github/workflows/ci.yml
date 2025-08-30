@@ -2,111 +2,72 @@ name: CI
 
 on:
   push:
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 jobs:
   build-and-test:
     name: Build & Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false             # <-- NEU: nicht abbrechen, wenn ein OS scheitert
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Install CMake
-        uses: lukka/get-cmake@latest
+    - name: Install dependencies (Linux/macOS)
+      if: matrix.os != 'windows-latest'
+      run: sudo apt-get update && sudo apt-get install -y lcov gcovr
 
-      - name: Configure project
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    - name: Set up CMake
+      uses: jwlawson/actions-setup-cmake@v1.14
 
-      - name: Build project
-        run: cmake --build build --config Release
+    - name: Configure project
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
-      - name: Run tests
-        run: ctest --test-dir build -C Release --output-on-failure
-        # Hinweis: Hier lassen wir bewusst scheitern, damit du rote/grüne Tests siehst
+    - name: Build project
+      run: cmake --build build --config Release
+
+    - name: Run tests
+      run: ctest --test-dir build --output-on-failure
 
   coverage:
-    name: Coverage (Linux)
+    name: Coverage (Linux only)
     runs-on: ubuntu-latest
+    needs: build-and-test
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y gcovr lcov
+    - name: Install gcovr
+      run: sudo apt-get update && sudo apt-get install -y gcovr
 
-      - name: Configure with coverage flags
-        run: |
-          cmake -S . -B build \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="--coverage" \
-            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+    - name: Configure with coverage flags
+      run: |
+        cmake -S . -B build \
+              -DCMAKE_BUILD_TYPE=Debug \
+              -DCMAKE_CXX_FLAGS="--coverage" \
+              -DCMAKE_C_FLAGS="--coverage"
 
-      - name: Build project
-        run: cmake --build build
+    - name: Build with coverage
+      run: cmake --build build
 
-      - name: Run tests (continue even if some fail)
-        run: ctest --test-dir build --output-on-failure || true   # <-- weiter auch bei Fails
-        continue-on-error: true                                    # <-- doppelt abgesichert
+    - name: Run tests (continue even if some fail)
+      run: ctest --test-dir build || true
 
-      - name: Generate HTML coverage report
-        if: always()                                               # <-- immer versuchen
-        run: gcovr -r . --html --html-details -o build/coverage.html
+    - name: Generate HTML coverage report
+      run: |
+        mkdir -p build/coverage
+        gcovr -r . --html --html-details \
+              --output build/coverage/coverage.html \
+              -e main/ \
+              -f Lab/ \
+              -f Lab/tests/
 
-      - name: Upload HTML coverage artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: build/coverage.html
-
-  coverage-macos:
-    name: Coverage (macOS)
-    runs-on: macos-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Configure with LLVM coverage flags
-        run: |
-          cmake -S . -B build \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-fprofile-instr-generate -fcoverage-mapping" \
-            -DCMAKE_EXE_LINKER_FLAGS="-fprofile-instr-generate -fcoverage-mapping"
-
-      - name: Build
-        run: cmake --build build
-
-      - name: Run tests (continue even if some fail)
-        run: ctest --test-dir build --output-on-failure || true
-        continue-on-error: true
-
-      - name: Generate llvm-cov HTML report
-        if: always()
-        shell: bash
-        run: |
-          BIN=$(find build -type f -name "unit_tests" -perm +111 2>/dev/null | head -n1)
-          if [ -z "$BIN" ]; then BIN=$(find build -type f -name "*tests*" -perm +111 2>/dev/null | head -n1); fi
-          PROFS=$(find build -name "*.profraw" | tr '\n' ' ')
-          if [ -z "$BIN" ] || [ -z "$PROFS" ]; then echo "No coverage data found"; exit 0; fi
-          xcrun llvm-profdata merge -sparse $PROFS -o build/coverage.profdata
-          mkdir -p build/coverage_html
-          xcrun llvm-cov show "$BIN" -instr-profile=build/coverage.profdata \
-            -format=html -output-dir build/coverage_html \
-            -ignore-filename-regex="(_deps/|tests?/)"
-          xcrun llvm-cov report "$BIN" -instr-profile=build/coverage.profdata > build/coverage_summary.txt
-
-      - name: Upload Coverage (HTML)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-macos-html
-          path: build/coverage_html
-          if-no-files-found: ignore
-         
+    - name: Upload HTML coverage artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: build/coverage/coverage.html
