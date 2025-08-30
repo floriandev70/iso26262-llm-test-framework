@@ -29,6 +29,9 @@ jobs:
       - name: Run tests (binary only, filter in main.cpp)
         run: ./build/unit_tests
 
+      - name: Debug build folder
+        run: ls -R build
+
   coverage:
     name: Coverage (Ubuntu only)
     runs-on: ubuntu-latest
