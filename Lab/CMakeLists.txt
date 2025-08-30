@@ -7,7 +7,6 @@ add_executable(unit_tests ${LAB_SOURCES})
 
 target_link_libraries(unit_tests
   gtest
-  gtest_main
 )
 
 # Enable GoogleTest integration
