@@ -1,0 +1,14 @@
+build*/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+*.ninja
+.ninja_*
+.idea/
+.DS_Store
+*.gcno
+*.gcda
+*.profraw
+*.profdata
+coverage*/
+coverage_*/
