@@ -55,9 +55,16 @@ jobs:
         run: ctest --test-dir build -R ASIL_A --output-on-failure || true
         continue-on-error: true
 
-      - name: Generate HTML coverage report
+      - name: Generate HTML coverage report for UUTs only
         if: always()
-        run: gcovr -r . --html --html-details -o build/coverage.html
+        run: |
+          gcovr -r . \
+            --filter 'Lab/.*' \
+            --exclude 'Lab/tests/.*' \
+            --exclude '.*_deps/.*' \
+            --exclude '.*CMakeFiles/.*' \
+            --html --html-details -o build/coverage.html
+
 
       - name: Upload HTML coverage artifact
         if: always()
