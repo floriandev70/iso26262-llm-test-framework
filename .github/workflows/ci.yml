@@ -26,14 +26,12 @@ jobs:
       - name: Build project
         run: cmake --build build --config Release
 
-      - name: Run tests (binary only, filter in main.cpp)
-        run: find build -type f -name unit_tests -exec {} \;
-
-      - name: Debug build folder
-        run: ls -R build
+      - name: Run only ASIL_A tests
+        run: ctest --test-dir build -C Release -R ASIL_A --output-on-failure
+        # ^ Nur Tests deren Name "ASIL_A" enthält
 
   coverage:
-    name: Coverage (Ubuntu only)
+    name: Coverage (Linux only)
     runs-on: ubuntu-latest
 
     steps:
@@ -53,8 +51,8 @@ jobs:
       - name: Build project
         run: cmake --build build
 
-      - name: Run tests (binary only, filter in main.cpp)
-        run: ./build/unit_tests || true
+      - name: Run only ASIL_A tests (continue even if some fail)
+        run: ctest --test-dir build -R ASIL_A --output-on-failure || true
         continue-on-error: true
 
       - name: Generate HTML coverage report
